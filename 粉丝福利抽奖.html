@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>幸运文字方格抽奖</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 20px 0;
+            /* 禁止页面缩放，保证排版一致 */
+            touch-action: manipulation;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 15px; /* 手机端左右留边距，避免贴边 */
+        }
+        .title {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px; /* 手机端字体缩小 */
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        /* 方格抽奖容器 */
+        .grid-lottery {
+            background-color: #fff;
+            border-radius: 12px; /* 手机端圆角稍小，更精致 */
+            padding: 18px; /* 减少内边距，节省空间 */
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+        }
+        /* 方格布局：2行3列，手机端优化间距 */
+        .lottery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px; /* 缩小方格间距，适配手机宽度 */
+        }
+        /* 方格样式：手机端优化尺寸和字体 */
+        .lottery-item {
+            height: 90px; /* 降低方格高度，适配手机垂直空间 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 17px; /* 缩小字体，避免换行 */
+            font-weight: 600;
+            color: #2c3e50;
+            background-color: #f8f9fa;
+            transition: all 0.15s ease; /* 加快过渡速度，响应更灵敏 */
+            border: 2px solid #eee;
+            /* 防止文字溢出，强制单行显示 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 8px;
+        }
+        /* 高亮闪烁样式：手机端增强对比度 */
+        .lottery-item.highlight {
+            background-color: #ff4757;
+            color: white;
+            border-color: #ff4757;
+            box-shadow: 0 0 12px rgba(255, 71, 87, 0.5);
+            transform: scale(1.02); /* 缩小缩放比例，避免超出屏幕 */
+        }
+        /* 中奖定格样式：手机端优化阴影 */
+        .lottery-item.win {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b6b 100%);
+            color: white;
+            border-color: #ff4757;
+            box-shadow: 0 0 15px rgba(255, 71, 87, 0.6);
+            transform: scale(1.03);
+        }
+        /* 按钮样式：手机端优化尺寸，便于点击 */
+        #start-btn {
+            display: block;
+            width: 160px; /* 缩小按钮宽度，适配手机 */
+            height: 55px; /* 降低按钮高度 */
+            margin: 0 auto 25px;
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b6b 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 20px; /* 缩小字体 */
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+            /* 增加点击区域，手机端更容易点中 */
+            touch-action: manipulation;
+            outline: none;
+        }
+        #start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(255, 71, 87, 0.4);
+        }
+        #start-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        /* 提示文字：手机端优化字体 */
+        .participated-tip {
+            text-align: center;
+            font-size: 16px;
+            color: #e74c3c;
+            margin-bottom: 18px;
+            font-weight: 600;
+            display: none;
+            line-height: 1.4;
+            padding: 0 10px;
+        }
+        /* 中奖记录区域：手机端优化字体和间距 */
+        .prize-record {
+            text-align: center;
+            font-size: 19px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-weight: 600;
+            min-height: 28px;
+            padding: 8px 10px;
+            line-height: 1.4;
+        }
+        /* 奖品介绍区域：手机端优化布局 */
+        .prize-intro {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+        }
+        .intro-title {
+            color: #2c3e50;
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .intro-list {
+            display: grid;
+            grid-template-columns: 1fr; /* 手机端改为单列布局，避免拥挤 */
+            gap: 9px;
+        }
+        .intro-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            font-size: 15px; /* 优化字体大小 */
+            color: #34495e;
+            line-height: 1.4;
+        }
+        .intro-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        /* 核销弹窗样式：手机端优化尺寸和间距 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            /* 允许弹窗内滚动（防止内容溢出） */
+            overflow-y: auto;
+            padding: 30px 15px;
+        }
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #fff;
+            border-radius: 18px;
+            padding: 35px 20px;
+            width: 100%;
+            max-width: 350px; /* 缩小弹窗最大宽度，适配手机 */
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        .modal-title {
+            color: #2c3e50;
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+        .wechat-code {
+            font-size: 26px;
+            font-weight: 700;
+            color: #ff4757;
+            margin: 18px 0;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            /* 增加点击区域 */
+            touch-action: manipulation;
+        }
+        .wechat-code:hover {
+            background-color: #f0f0f0;
+        }
+        .modal-desc {
+            color: #34495e;
+            font-size: 15px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            padding: 0 5px;
+        }
+        .copy-tip {
+            color: #27ae60;
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+        }
+        .copy-tip.active {
+            display: block;
+        }
+        .close-btn {
+            width: 100%;
+            height: 48px;
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b6b 100%);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            touch-action: manipulation;
+            outline: none;
+        }
+        .close-btn:hover {
+            background: linear-gradient(135deg, #e03c4c 0%, #e85d6a 100%);
+        }
+        /* 针对小屏手机的额外适配（比如屏幕宽度<375px） */
+        @media (max-width: 375px) {
+            .lottery-item {
+                height: 80px;
+                font-size: 16px;
+            }
+            .title {
+                font-size: 22px;
+            }
+            #start-btn {
+                width: 150px;
+                height: 50px;
+                font-size: 19px;
+            }
+            .prize-record {
+                font-size: 18px;
+            }
+            .intro-item {
+                font-size: 14px;
+                padding: 9px 10px;
+            }
+            .modal-content {
+                padding: 30px 15px;
+            }
+            .modal-title {
+                font-size: 21px;
+            }
+            .wechat-code {
+                font-size: 24px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">幸运文字方格抽奖</h1>
+
+        <!-- 方格抽奖区域 -->
+        <div class="grid-lottery">
+            <div class="lottery-grid">
+                <div class="lottery-item" data-prize="特等奖（899会员卡）">特等奖</div>
+                <div class="lottery-item" data-prize="一等奖（199会员卡）">一等奖</div>
+                <div class="lottery-item" data-prize="二等奖（会员体验视频）">二等奖</div>
+                <div class="lottery-item" data-prize="三等奖（精彩诱惑摄影6部）">三等奖</div>
+                <div class="lottery-item" data-prize="四等奖（丝足腿摄影6部）">四等奖</div>
+                <div class="lottery-item" data-prize="五等奖（清凉壁纸30张）">五等奖</div>
+            </div>
+        </div>
+
+        <button id="start-btn">立即抽奖</button>
+        <div class="participated-tip" id="participatedTip">你已参与过抽奖，每人仅能参与1次！</div>
+
+        <!-- 中奖记录区域 -->
+        <div class="prize-record" id="prizeRecord"></div>
+
+        <!-- 奖品介绍区域 -->
+        <div class="prize-intro">
+            <h3 class="intro-title">奖品介绍</h3>
+            <div class="intro-list">
+                <div class="intro-item">
+                    <span class="intro-color" style="background-color: #ff6b6b;"></span>
+                    <span>特等奖：899会员卡</span>
+                </div>
+                <div class="intro-item">
+                    <span class="intro-color" style="background-color: #ffb86c;"></span>
+                    <span>一等奖：199会员卡</span>
+                </div>
+                <div class="intro-item">
+                    <span class="intro-color" style="background-color: #f1fa8c;"></span>
+                    <span>二等奖：会员体验视频</span>
+                </div>
+                <div class="intro-item">
+                    <span class="intro-color" style="background-color: #50fa7b;"></span>
+                    <span>三等奖：精彩诱惑摄影6部</span>
+                </div>
+                <div class="intro-item">
+                    <span class="intro-color" style="background-color: #8be9fd;"></span>
+                    <span>四等奖：丝足腿摄影6部</span>
+                </div>
+                <div class="intro-item">
+                    <span class="intro-color" style="background-color: #bd93f9;"></span>
+                    <span>五等奖：清凉壁纸30张</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 核销弹窗 -->
+    <div class="modal" id="verifyModal">
+        <div class="modal-content">
+            <h3 class="modal-title">中奖核销提示</h3>
+            <p class="modal-desc">恭喜你抽中【<span id="modalPrizeName"></span>】</p>
+            <p class="modal-desc">请复制下方微信号，截图联系客服核销领奖</p>
+            <div class="wechat-code" id="wechatCode" onclick="copyWechat()">a0111Re</div>
+            <p class="copy-tip" id="copyTip">复制成功！可粘贴到微信搜索</p>
+            <button class="close-btn" onclick="closeModal()">我知道了</button>
+        </div>
+    </div>
+
+    <script>
+        // 核心配置：6个奖品（保持原精准概率）
+        const prizes = [
+            { name: "特等奖（899会员卡）", weight: 0, color: "#ff6b6b" },    // 0%
+            { name: "一等奖（199会员卡）", weight: 10, color: "#ffb86c" },   // 0.1%
+            { name: "二等奖（会员体验视频大尺度）", weight: 100, color: "#f1fa8c" },  // 1%
+            { name: "三等奖（精彩诱惑摄影6部）", weight: 3297, color: "#50fa7b" },    // 32.97%
+            { name: "四等奖（丝足腿摄影作业6部）", weight: 3297, color: "#8be9fd" },   // 32.97%
+            { name: "五等奖（清凉壁纸30张）", weight: 3296, color: "#bd93f9" }        // 32.96%
+        ];
+
+        const totalWeight = prizes.reduce((sum, prize) => sum + prize.weight, 0);
+
+        // DOM元素
+        const startBtn = document.getElementById("start-btn");
+        const participatedTip = document.getElementById("participatedTip");
+        const verifyModal = document.getElementById("verifyModal");
+        const modalPrizeName = document.getElementById("modalPrizeName");
+        const copyTip = document.getElementById("copyTip");
+        const prizeRecord = document.getElementById("prizeRecord");
+        const lotteryItems = document.querySelectorAll(".lottery-item");
+
+        let isSpinning = false;
+        const hasParticipated = localStorage.getItem("hasParticipated");
+        const winningRecord = localStorage.getItem("winningRecord"); // 存储中奖记录
+        let highlightIndex = 0;
+        let highlightInterval = null;
+        let slowDownInterval = null;
+
+        // 页面加载时初始化（显示中奖记录+禁用按钮）
+        window.onload = () => {
+            if (hasParticipated) {
+                startBtn.disabled = true;
+                participatedTip.style.display = "block";
+                // 显示中奖记录并高亮中奖方格
+                if (winningRecord) {
+                    const { name, color } = JSON.parse(winningRecord);
+                    prizeRecord.innerHTML = `<span style="color: ${color};">你的中奖记录：【${name}】</span>`;
+                    // 高亮中奖方格
+                    lotteryItems.forEach(item => {
+                        if (item.dataset.prize === name) {
+                            item.classList.add("win");
+                        }
+                    });
+                } else {
+                    prizeRecord.textContent = "你已参与抽奖，暂无中奖记录";
+                }
+            }
+        };
+
+        // 1. 抽奖核心逻辑（概率不变）
+        function getRandomPrize() {
+            const randomNum = Math.random() * totalWeight;
+            let currentSum = 0;
+            for (const prize of prizes) {
+                currentSum += prize.weight;
+                if (randomNum <= currentSum) {
+                    return prize;
+                }
+            }
+            return prizes[prizes.length - 1];
+        }
+
+        // 2. 高亮闪烁逻辑（循环遍历所有方格）
+        function startHighlight() {
+            // 清除之前的定时器
+            if (highlightInterval) clearInterval(highlightInterval);
+            if (slowDownInterval) clearInterval(slowDownInterval);
+
+            // 快速闪烁阶段（手机端稍加快速度，提升体验）
+            highlightInterval = setInterval(() => {
+                // 移除所有方格的高亮
+                lotteryItems.forEach(item => item.classList.remove("highlight"));
+                // 高亮当前索引的方格
+                lotteryItems[highlightIndex].classList.add("highlight");
+                // 索引递增，循环遍历
+                highlightIndex = (highlightIndex + 1) % lotteryItems.length;
+            }, 80); // 手机端100ms→80ms，闪烁更流畅
+        }
+
+        // 3. 减速闪烁，最后定格在中奖方格
+        function slowDownAndStop(winningPrize) {
+            // 清除快速闪烁定时器
+            clearInterval(highlightInterval);
+
+            // 找到中奖方格的索引
+            const winningIndex = Array.from(lotteryItems).findIndex(
+                item => item.dataset.prize === winningPrize.name
+            );
+
+            // 减速闪烁阶段（手机端调整减速节奏，更适配触屏体验）
+            let delay = 180;
+            let currentIndex = highlightIndex;
+
+            slowDownInterval = setInterval(() => {
+                // 移除所有方格的高亮
+                lotteryItems.forEach(item => item.classList.remove("highlight"));
+                // 高亮当前索引的方格
+                lotteryItems[currentIndex].classList.add("highlight");
+                // 索引递增，循环遍历
+                currentIndex = (currentIndex + 1) % lotteryItems.length;
+
+                // 当接近中奖索引时，进一步减速
+                if (Math.abs(currentIndex - winningIndex) <= 2) {
+                    delay += 120; // 手机端减速幅度稍小，避免等待过久
+                }
+
+                // 当到达中奖索引时，停止并定格
+                if (currentIndex === winningIndex) {
+                    clearInterval(slowDownInterval);
+                    lotteryItems.forEach(item => item.classList.remove("highlight"));
+                    lotteryItems[winningIndex].classList.add("win");
+                    isSpinning = false;
+
+                    // 存储参与状态和中奖记录
+                    localStorage.setItem("hasParticipated", "true");
+                    localStorage.setItem("winningRecord", JSON.stringify(winningPrize));
+
+                    // 显示中奖记录
+                    prizeRecord.innerHTML = `<span style="color: ${winningPrize.color};">恭喜！抽中【${winningPrize.name}】</span>`;
+                    participatedTip.style.display = "block";
+
+                    // 显示核销弹窗
+                    modalPrizeName.textContent = winningPrize.name;
+                    verifyModal.classList.add("active");
+                }
+
+                // 更新定时器间隔
+                clearInterval(slowDownInterval);
+                slowDownInterval = setInterval(() => {
+                    // 重复上述逻辑，直到到达中奖索引
+                    lotteryItems.forEach(item => item.classList.remove("highlight"));
+                    lotteryItems[currentIndex].classList.add("highlight");
+                    currentIndex = (currentIndex + 1) % lotteryItems.length;
+
+                    if (Math.abs(currentIndex - winningIndex) <= 2) {
+                        delay += 120;
+                    }
+
+                    if (currentIndex === winningIndex) {
+                        clearInterval(slowDownInterval);
+                        lotteryItems.forEach(item => item.classList.remove("highlight"));
+                        lotteryItems[winningIndex].classList.add("win");
+                        isSpinning = false;
+
+                        localStorage.setItem("hasParticipated", "true");
+                        localStorage.setItem("winningRecord", JSON.stringify(winningPrize));
+
+                        prizeRecord.innerHTML = `<span style="color: ${winningPrize.color};">恭喜！抽中【${winningPrize.name}】</span>`;
+                        participatedTip.style.display = "block";
+
+                        modalPrizeName.textContent = winningPrize.name;
+                        verifyModal.classList.add("active");
+                    }
+
+                    clearInterval(slowDownInterval);
+                    slowDownInterval = setInterval(arguments.callee, delay);
+                }, delay);
+            }, delay);
+        }
+
+        // 4. 抽奖按钮点击事件（适配手机端触屏）
+        startBtn.addEventListener("click", () => {
+            if (isSpinning || hasParticipated) return;
+            
+            isSpinning = true;
+            startBtn.disabled = true;
+            prizeRecord.textContent = "抽奖中...";
+
+            // 重置所有方格样式
+            lotteryItems.forEach(item => {
+                item.classList.remove("highlight", "win");
+            });
+
+            // 1. 先快速高亮闪烁1.8秒（手机端缩短闪烁时间，提升体验）
+            startHighlight();
+
+            // 2. 1.8秒后开始减速，最后定格在中奖方格
+            const winningPrize = getRandomPrize();
+            setTimeout(() => {
+                slowDownAndStop(winningPrize);
+            }, 1800);
+        });
+
+        // 5. 复制微信号功能（适配手机端触屏点击）
+        function copyWechat() {
+            const text = document.getElementById("wechatCode").textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                copyTip.classList.add("active");
+                setTimeout(() => copyTip.classList.remove("active"), 2000);
+            }).catch(err => {
+                // 兼容部分手机剪贴板权限问题
+                alert("复制失败，请手动复制微信号：" + text);
+            });
+        }
+
+        // 6. 关闭弹窗功能
+        function closeModal() {
+            verifyModal.classList.remove("active");
+        }
+
+        // 7. 点击弹窗外部关闭
+        window.addEventListener("click", (e) => {
+            if (e.target === verifyModal) closeModal();
+        });
+
+        // 8. 防止手机端双击缩放（影响体验）
+        document.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
